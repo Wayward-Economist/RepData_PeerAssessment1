@@ -2,11 +2,8 @@
 # Author:       Wayward-Economist
 # Date:         7/16/14
 # Github:       https://github.com/Wayward-Economist/Getting_and_Cleaning_Data_Project
-# Description:  This script includes the code for the first peer assessment project in
-#               the Coursera course "Reproducible Research."
 # Notes:        The script contains the R code chunks that will be imported into the
-#               R markdown document "Peer_Assessment_One.Rmd" document; that document
-#               will be submited in order to satisfy the course requirements.
+#               R markdown document "Assessment_One.Rmd" document.
 ######################################################################################
 
 ## ---- Load__Preprocessing_Data ----

@@ -1,0 +1,88 @@
+---
+title: "Peer Assessment One"
+author: "Wayward-Economist"
+date: "Wednesday, July 16, 2014"
+output: html_document
+---
+
+<!---
+The following code chunk loads the required libraries and loads the R script "Peer_Assessment_One_Script.R" into a code chunk format for this R markdown file. Note that the options that are employed in order to supress the warnings that would otherwise be printed to the output document.
+-->
+
+```{r, echo = FALSE, results = 'hide', warning = FALSE, message = FALSE}
+library(knitr)
+library(plyr)
+library(lattice)
+options("scipen"=100, "digits"=4)
+```
+
+To begin, load the activity monitoring data. The data was provided in the forked repository from [Roger Peng's github repository](https://github.com/rdpeng/RepData_PeerAssessment1). The data comes in a zipped folder in the repository; this folder was manually unzipped. The activity dataset has three data variables. The first variable is equal to number of steps taking in each five mintue interval during the day. The time of interval is recording as the cumulative number of minutes since the begining of the day. I.e. row 5000 has records a value for the "interval" equal to 835, which indicates that the row corresponds to the number of steps taken between the 835th and 840th minute of the day. The date variable is self-explanatory but it recorded as a string type variable by the read.csv function. Therefore, it is transformed to a date type varaible.
+
+```{r}
+## Load the data and change the formats of the date and interval variables.
+activity          <- read.csv("activity.csv")
+activity$date     <- as.Date(activity$date, format = '%Y-%m-%d')
+```
+
+In order to calculate the number of steps taken per day, the data have to be aggregated. The average number of steps taken per day can be calculated using the aggregate function and the mean function. This is accomplished below.
+
+```{r}
+daily <- aggregate(steps ~ date, activity, sum)
+hist(daily[, 2], breaks = 20, xlab = "Steps", main = "Total Steps Taken per Day", col = "aliceblue")
+mean(daily[, 2])
+median(daily[, 2])
+```
+
+The mean number of steps taken per mean is `r mean(daily[, 2])` and the median number of steps taken per day is `r median(daily[, 2])`. Note that the histogram indicates there might be some negative skewness to the data but the mean and median are approximately equal suggesting that this is probably not a major cause for concern.
+
+Turning now to the daily activity pattern, the number of steps taken per interval must be averaged over all the days in the dataset. This is accomplished using the ddply function. The average number of steps taken per interval is plotted below. Note that the x-axis shows the cumulative minutes of the day, thus the the data corresponding to 1000 on the x-axis indicates the average number of steps taken in the 1000th minute of the day.
+
+```{r}
+## Use ddply and the plot function to plot the averate number of steps taken per minute.
+mean_steps <- ddply(activity, .(interval), summarize, mean(steps, na.rm = TRUE))
+plot(mean_steps, type = "l", ylab = "Average Steps", xlab = "Cumulative Minute", lwd = 2, col = "darkred")
+mean_steps[which(mean_steps[, 2] == max(mean_steps[, 2])), 1]
+```
+
+According to the plot above, the maximum number of steps taken in the day corresponds approximately to the 800th minute of the day. This is confirmed by the code above, which indicates that the the maximum average number of steps takes place in the interval corresponding to `r mean_steps[which(mean_steps[, 2] == max(mean_steps[, 2])), 1]`th minute.
+
+There are a substantial number of missing observations in the dataset. There are `r sum(is.na(activity$steps))` missing observations throughout the data. A simple imputation strategy replaces the missing observations with the number of steps taken in the same interval averaged over all days in the dataset.  
+
+```{r}
+## Calculate the number of missing values and impute them with the average for the corresponding interval.
+missing              <- is.na(activity$steps)
+activity$imputed     <- activity$steps
+activity[missing, 4] <- rep(mean_steps[,2], times = nlevels(as.factor(activity$date)))[missing]
+daily_im             <- aggregate(imputed ~ date, activity, sum)[, 2]
+hist(daily_im, breaks = 20, xlab = "Steps", main = "Total Steps Taken per Day", col = "aliceblue")
+mean(daily_im)
+median(daily_im)
+```
+
+Returning to the mean and median number of steps taken per day, the average number of steps taken per day including the imputed days is `r mean(daily_im)`. Similarly, the median number of steps taken per day is `r median(daily_im)`. The mean has pulled in slightly and is now equal to the median with the imputed data included. The histogram of total number of steps taken per day has a similar pattern to the histogram of the data without the imputed data. The frequency of steps taken per day has increased at the center of distribution. 
+
+As an additional comparison of the data before and after imputation, a histogram of the steps taken per interval is plotted below.
+
+```{r}
+## Compare the histogram of average steps taken per day by plotting the two histograms next to each other.
+par(mfrow=c(1, 2))
+hist(aggregate(activity$steps, by = list(activity$date), FUN = sum, na.rm = TRUE)[, 2], breaks = 20, xlab = "Steps", main = "Steps Taken per Interval", col = "aliceblue")
+hist(aggregate(activity$imputed, by = list(activity$date), FUN = sum, na.rm = TRUE)[, 2], breaks = 20, xlab = "Steps", main = "Imputed Steps Taken per Interval", col = "aliceblue")
+par(mfrow=c(1, 1))
+
+```
+
+The histogram of steps taken per interval confirms the pattern shown in the histogram of total steps taken per day. The frequency of steps taken at the center of the distribution has increased substantially. However, the frequency of intervals where no steps are taken has declined substantially. 
+
+Comparing the number of steps taken between weekdays and weekends is accomplished first by creating a factor variable to indicate whether the data in question corresponds to a weekday. A plot is also shown.
+
+```{r}
+## ---- Compare_Weekday ----
+## Compare the activity pattern on weekdays with the pattern on weekends.
+activity$weekday <- "Weekday"
+activity[(weekdays(activity$date) == "Saturday" | weekdays(activity$date) == "Sunday"), 5] <- "Weekend"
+mean_steps <- aggregate(imputed ~ interval + weekday, data = activity, mean)
+xyplot(imputed ~ interval | weekday, data = mean_steps, layout = c(1, 2), type = "l", lwd = 2, col = "darkred")
+```
+
+The data indicates indicates a substantial difference between weekday and weekends. During the weekdays there are a substantial peak in the number of steps taken between minutes 750 and 1000. The remainder of the day shows a fairly consistent number steps taken until minute 1900. On weekends, there is a substantial peak between minutes 750 and 1000 but there is not a substantial drop-off in the number of steps taken. Moreover, the data shows a much higher level of variance in the number of steps taken after minute 1000. Lastly, during weekdays activity drops off after minute 2000 but during weekends activity persists (and even spikes) for about 60 minutes after minute 2000. This indicates the unsurprising conclusion that activity continues for longer on weekends than on weekdays.
